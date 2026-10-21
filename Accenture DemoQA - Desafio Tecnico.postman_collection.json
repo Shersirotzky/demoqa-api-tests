@@ -1,0 +1,375 @@
+{
+  "info": {
+    "_postman_id": "489f0532-0512-474a-b0ad-1ff5c4e68748",
+    "name": "Accenture DemoQA - Desafio Tecnico",
+    "description": "Fluxo da imagem do desafio: criar usuário, gerar token, confirmar autorização, listar livros, reservar dois e consultar perfil. Termina com os livros reservados para inspeção. Sem exclusão automática. Testes HTTP não executados.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "22798446",
+    "_collection_link": "https://go.postman.co/collection/22798446-489f0532-0512-474a-b0ad-1ff5c4e68748?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "01. Criar um usuário",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.environment.set(\n    \"randomUserName\",\n    \"teste_\" + pm.variables.replaceIn(\"{{$guid}}\")\n);\n\n// Senha de exemplo exclusiva para esta API de testes.\npm.environment.set(\"password\", \"Teste@123Aa\");\n\nconst schema = {\n    type: \"object\",\n    required: [\"userID\", \"username\", \"books\"],\n    properties: {\n        userID: { type: \"string\", minLength: 1 },\n        username: { type: \"string\", minLength: 1 },\n        books: {\n            type: \"array\",\n            items: { type: \"object\" }\n        }\n    }\n};\n\npm.variables.set(\"createUserSchema\", JSON.stringify(schema));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const schema = JSON.parse(pm.variables.get(\"createUserSchema\"));\nconst userName = pm.variables.replaceIn(\"{{$randomUserName}}\");\nconst password = \"Teste@123Aa\"; // Senha de exemplo para esta API de testes.\n\npm.environment.set(\"randomUserName\", userName);\npm.environment.set(\"password\", password);\n\nif (pm.response.code !== 201) {\n    console.log(\"Erro na criação:\", pm.response.text());\n}\n\n\npm.test(\n    \"Dado um usuário válido, quando solicito sua criação, então recebo status 201\",\n    function () {\n        pm.response.to.have.status(201);\n    }\n);\n\npm.test(\n    \"Dado um usuário criado, quando verifico a resposta, então ela atende ao contrato JSON\",\n    function () {\n        pm.response.to.be.json;\n        pm.response.to.have.jsonSchema(schema);\n    }\n);\n\npm.test(\n    \"Dado um usuário criado, quando verifico seu nome, então corresponde ao enviado\",\n    function () {\n        pm.response.to.have.status(201);\n        pm.response.to.have.jsonSchema(schema);\n\n        const response = pm.response.json();\n        const request = JSON.parse(\n            pm.variables.replaceIn(pm.request.body.raw)\n        );\n\n        pm.expect(response.username).to.eql(request.userName);\n    }\n);\n\npm.test(\n    \"Dado que a criação foi validada, quando salvo os dados, então ficam disponíveis para as próximas requisições\",\n    function () {\n        pm.response.to.have.status(201);\n        pm.response.to.be.json;\n        pm.response.to.have.jsonSchema(schema);\n\n        const response = pm.response.json();\n        const request = JSON.parse(\n            pm.variables.replaceIn(pm.request.body.raw)\n        );\n\n        pm.expect(response.username).to.eql(request.userName);\n        pm.expect(request.password).to.be.a(\"string\").and.not.empty;\n\n        pm.environment.set(\"userID\", response.userID);\n        pm.environment.set(\"userName\", response.username);\n        pm.environment.set(\"randomUserName\", response.username);\n        pm.environment.set(\"password\", request.password);\n    }\n);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"userName\": \"{{$randomUserName}}\", \n\"password\": \"{{password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/Account/v1/User",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "Account",
+            "v1",
+            "User"
+          ]
+        },
+        "description": "Etapa do fluxo principal do desafio Accenture. Executar as seis requisições em ordem no Collection Runner. Expectativas funcionais ainda não verificadas contra a API."
+      },
+      "response": []
+    },
+    {
+      "name": "02. Gerar um token de acesso",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.environment.unset(\"token\");\n\npm.test(\n    \"Dado um usuário cadastrado com credenciais válidas, quando solicito um token, então recebo um token válido e o salvo no ambiente\",\n    function () {\n        pm.response.to.have.status(200);\n\n        const response = pm.response.json();\n\n        pm.expect(response.status, response.result).to.eql(\"Success\");\n        pm.expect(response.token).to.be.a(\"string\").and.not.empty;\n        pm.environment.set(\"token\", response.token);\n    }\n);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userName\": \"{{randomUserName}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/Account/v1/GenerateToken",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "Account",
+            "v1",
+            "GenerateToken"
+          ]
+        },
+        "description": "Etapa do fluxo principal do desafio Accenture. Executar as seis requisições em ordem no Collection Runner. Expectativas funcionais ainda não verificadas contra a API."
+      },
+      "response": []
+    },
+    {
+      "name": "03. Confirmar se o usuário criado está autorizado",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\n    \"Dado um usuário cadastrado, quando verifico sua autorização, então recebo status 200\",\n    function () {\n        pm.response.to.have.status(200);\n    }\n);\n\npm.test(\n    \"Dado uma consulta de autorização, quando verifico o contrato da resposta, então recebo um booleano em JSON\",\n    function () {\n        pm.response.to.be.json;\n        pm.response.to.have.jsonSchema({\n            type: \"boolean\"\n        });\n    }\n);\n\npm.test(\n    \"Dado um usuário autorizado, quando consulto sua autorização, então a resposta é true\",\n    function () {\n        pm.expect(pm.response.json()).to.eql(true);\n    }\n);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"userName\": \"{{randomUserName}}\",\n \"password\": \"{{password}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/Account/v1/Authorized",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "Account",
+            "v1",
+            "Authorized"
+          ]
+        },
+        "description": "Etapa do fluxo principal do desafio Accenture. Executar as seis requisições em ordem no Collection Runner. Expectativas funcionais ainda não verificadas contra a API."
+      },
+      "response": []
+    },
+    {
+      "name": "04. Listar livros disponiveis",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\n    \"Dado um usuário existente e um token válido, quando consulto seu perfil, então recebo status 200\",\n    function () {\n        pm.response.to.have.status(200);\n    }\n);\n\npm.test(\n    \"Dado uma consulta de perfil, quando verifico a resposta, então ela atende ao contrato do usuário\",\n    function () {\n        pm.response.to.be.json;\n        pm.response.to.have.jsonSchema({\n            type: \"object\",\n            required: [\"userId\", \"username\", \"books\"],\n            properties: {\n                userId: { type: \"string\", minLength: 1 },\n                username: { type: \"string\", minLength: 1 },\n                books: {\n                    type: \"array\",\n                    items: { type: \"object\" }\n                }\n            }\n        });\n    }\n);\n\npm.test(\n    \"Dado o usuário criado na F01, quando consulto seu perfil, então o ID e o nome correspondem aos dados salvos\",\n    function () {\n        const response = pm.response.json();\n\n        pm.expect(response.userId)\n            .to.eql(pm.environment.get(\"userID\"));\n\n        pm.expect(response.username)\n            .to.eql(pm.environment.get(\"randomUserName\"));\n    }\n);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/Account/v1/User/{{userID}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "Account",
+            "v1",
+            "User",
+            "{{userID}}"
+          ]
+        },
+        "description": "Etapa do fluxo principal do desafio Accenture. Executar as seis requisições em ordem no Collection Runner. Expectativas funcionais ainda não verificadas contra a API."
+      },
+      "response": []
+    },
+    {
+      "name": "05. Listar os livros disponiveis",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const schema = JSON.parse(pm.variables.get(\"booksSchema\"));\n\npm.environment.unset(\"isbn1\");\npm.environment.unset(\"isbn2\");\n\npm.test(\n    \"Dado um catálogo disponível, quando consulto os livros, então recebo status 200\",\n    function () {\n        pm.response.to.have.status(200);\n    }\n);\n\npm.test(\n    \"Dado uma consulta ao catálogo, quando verifico a resposta, então os livros atendem ao contrato JSON\",\n    function () {\n        pm.response.to.be.json;\n        pm.response.to.have.jsonSchema(schema);\n    }\n);\n\npm.test(\n    \"Dado um catálogo com pelo menos dois ISBNs distintos, quando sorteio dois livros, então salvo ISBNs diferentes para a próxima requisição\",\n    function () {\n        pm.response.to.have.status(200);\n        pm.response.to.be.json;\n        pm.response.to.have.jsonSchema(schema);\n\n        const books = pm.response.json().books;\n        const isbns = [...new Set(books.map(book => book.isbn))];\n\n        pm.expect(\n            isbns.length,\n            \"É necessário ter pelo menos dois ISBNs distintos\"\n        ).to.be.at.least(2);\n\n        const index1 = Math.floor(Math.random() * isbns.length);\n        const isbn1 = isbns.splice(index1, 1)[0];\n\n        const index2 = Math.floor(Math.random() * isbns.length);\n        const isbn2 = isbns[index2];\n\n        pm.expect(isbn1).to.not.eql(isbn2);\n\n        pm.environment.set(\"isbn1\", isbn1);\n        pm.environment.set(\"isbn2\", isbn2);\n    }\n);"
+            ]
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const schema = {\n    type: \"object\",\n    required: [\"books\"],\n    properties: {\n        books: {\n            type: \"array\",\n            minItems: 2,\n            items: {\n                type: \"object\",\n                required: [\n                    \"isbn\", \"title\", \"subTitle\", \"author\",\n                    \"publish_date\", \"publisher\", \"pages\",\n                    \"description\", \"website\"\n                ],\n                properties: {\n                    isbn: { type: \"string\", pattern: \"^[0-9]{13}$\" },\n                    title: { type: \"string\", minLength: 1 },\n                    subTitle: { type: \"string\" },\n                    author: { type: \"string\", minLength: 1 },\n                    publish_date: {\n                        type: \"string\",\n                        format: \"date-time\"\n                    },\n                    publisher: { type: \"string\", minLength: 1 },\n                    pages: { type: \"integer\", minimum: 1 },\n                    description: { type: \"string\" },\n                    website: { type: \"string\", format: \"uri\" }\n                }\n            }\n        }\n    }\n};\n\npm.variables.set(\"booksSchema\", JSON.stringify(schema));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/bookStore/v1/books",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "bookStore",
+            "v1",
+            "books"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "06. Alugar dois livros de livre escolha",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const schema = {\n    type: \"object\",\n    required: [\"books\"],\n    properties: {\n        books: {\n            type: \"array\",\n            minItems: 2,\n            maxItems: 2,\n            items: {\n                type: \"object\",\n                required: [\"isbn\"],\n                properties: {\n                    isbn: {\n                        type: \"string\",\n                        pattern: \"^[0-9]{13}$\"\n                    }\n                }\n            }\n        }\n    }\n};\n\npm.variables.set(\"rentBooksSchema\", JSON.stringify(schema));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const schema = JSON.parse(pm.variables.get(\"rentBooksSchema\"));\n\npm.test(\n    \"Dado um usuário autorizado e dois livros disponíveis, quando adiciono os livros à sua coleção, então recebo status 201\",\n    function () {\n        pm.response.to.have.status(201);\n    }\n);\n\npm.test(\n    \"Dado uma inclusão de dois livros, quando verifico a resposta, então ela atende ao contrato JSON\",\n    function () {\n        pm.response.to.be.json;\n        pm.response.to.have.jsonSchema(schema);\n    }\n);\n\npm.test(\n    \"Dado dois ISBNs escolhidos, quando adiciono os livros, então a resposta contém exatamente esses dois ISBNs\",\n    function () {\n        pm.response.to.have.status(201);\n        pm.response.to.have.jsonSchema(schema);\n\n        const request = JSON.parse(\n            pm.variables.replaceIn(pm.request.body.raw)\n        );\n\n        const esperados = request.collectionOfIsbns.map(\n            book => book.isbn\n        );\n\n        pm.expect(esperados).to.have.lengthOf(2);\n        pm.expect(esperados[0]).to.not.eql(esperados[1]);\n\n        const recebidos = pm.response.json().books.map(\n            book => book.isbn\n        );\n\n        pm.expect(recebidos).to.have.lengthOf(2);\n        pm.expect(recebidos).to.have.members(esperados);\n    }\n);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{userID}}\",\n  \"collectionOfIsbns\": [\n    {\n      \"isbn\": \"{{isbn1}}\"\n    },\n    {\n      \"isbn\": \"{{isbn2}}\"\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/BookStore/v1/Books",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "BookStore",
+            "v1",
+            "Books"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "07. Listar os detalhes do usuário com os livros escolhidos",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const schema = JSON.parse(pm.variables.get(\"userBooksSchema\"));\n\npm.test(\n    \"Dado um usuário existente e um token válido, quando consulto seu perfil, então recebo status 200\",\n    function () {\n        pm.response.to.have.status(200);\n    }\n);\n\npm.test(\n    \"Dado o usuário criado anteriormente, quando consulto seu perfil, então o ID retornado corresponde ao ID salvo\",\n    function () {\n        const response = pm.response.json();\n\n        pm.expect(response.userId)\n            .to.eql(pm.environment.get(\"userID\"));\n    }\n);\n\npm.test(\n    \"Dado um usuário com os dois livros escolhidos, quando consulto seu perfil, então recebo exatamente esses dois livros\",\n    function () {\n        const response = pm.response.json();\n\n        const esperados = [\n            pm.environment.get(\"isbn1\"),\n            pm.environment.get(\"isbn2\")\n        ];\n\n        pm.expect(esperados[0]).to.be.a(\"string\").and.not.empty;\n        pm.expect(esperados[1]).to.be.a(\"string\").and.not.empty;\n        pm.expect(esperados[0]).to.not.eql(esperados[1]);\n\n        pm.expect(response.books)\n            .to.be.an(\"array\").with.lengthOf(2);\n\n        const recebidos = response.books.map(book => book.isbn);\n\n        pm.expect(recebidos).to.have.members(esperados);\n    }\n);\n\npm.test(\n    \"Dado uma consulta ao perfil com livros, quando verifico a resposta, então os dados do usuário e os detalhes dos livros atendem ao contrato JSON\",\n    function () {\n        pm.response.to.be.json;\n        pm.response.to.have.jsonSchema(schema);\n    }\n);"
+            ]
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const schema = {\n    type: \"object\",\n    required: [\"userId\", \"username\", \"books\"],\n    properties: {\n        userId: { type: \"string\", minLength: 1 },\n        username: { type: \"string\", minLength: 1 },\n        books: {\n            type: \"array\",\n            items: {\n                type: \"object\",\n                required: [\n                    \"isbn\", \"title\", \"subTitle\", \"author\",\n                    \"publish_date\", \"publisher\", \"pages\",\n                    \"description\", \"website\"\n                ],\n                properties: {\n                    isbn: { type: \"string\", minLength: 1 },\n                    title: { type: \"string\", minLength: 1 },\n                    subTitle: { type: \"string\" },\n                    author: { type: \"string\", minLength: 1 },\n                    publish_date: {\n                        type: \"string\",\n                        format: \"date-time\"\n                    },\n                    publisher: { type: \"string\", minLength: 1 },\n                    pages: { type: \"integer\", minimum: 1 },\n                    description: { type: \"string\" },\n                    website: { type: \"string\", format: \"uri\" }\n                }\n            }\n        }\n    }\n};\n\npm.variables.set(\"userBooksSchema\", JSON.stringify(schema));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/Account/v1/User/{{userID}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "Account",
+            "v1",
+            "User",
+            "{{userID}}"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
