@@ -1,0 +1,11 @@
+# Dependências
+node_modules/
+
+# Relatórios gerados
+reports/
+
+# Logs
+*.log
+
+# Arquivos do macOS
+.DS_Store
